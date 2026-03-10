@@ -34,6 +34,11 @@ app.use('/api/v1/chat', chatRoutes);
 app.use('/api/v1/ai', aiRoutes);
 app.use('/api/v1/pricing', pricingRoutes);
 
+// Root route
+app.get('/', (req, res) => {
+    res.json({ success: true, message: 'Smart Parking API is active.', version: '1.0.0' });
+});
+
 // Health check
 app.get('/api/v1/health', (req, res) => {
     res.json({ success: true, message: 'Smart Parking API is running.', data: null });
@@ -46,22 +51,33 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
-    await connectDB();
+    try {
+        await connectDB();
 
-    // Seed default pricing if empty
-    const Pricing = require('./src/models/Pricing');
-    const count = await Pricing.countDocuments();
-    if (count === 0) {
-        await Pricing.create([
-            { vehicleType: 'Car', hourlyRate: 40 },
-            { vehicleType: 'Bike', hourlyRate: 20 },
-        ]);
-        console.log('✅ Default pricing seeded (Car: ₹40/hr, Bike: ₹20/hr)');
+        // Seed default pricing if empty
+        const Pricing = require('./src/models/Pricing');
+        const count = await Pricing.countDocuments();
+        if (count === 0) {
+            await Pricing.create([
+                { vehicleType: 'Car', hourlyRate: 40 },
+                { vehicleType: 'Bike', hourlyRate: 20 },
+            ]);
+            console.log('✅ Default pricing seeded (Car: ₹40/hr, Bike: ₹20/hr)');
+        }
+
+        if (process.env.NODE_ENV !== 'production') {
+            app.listen(PORT, () => {
+                console.log(`🚀 Server running on http://localhost:${PORT}`);
+            });
+        }
+    } catch (error) {
+        console.error('❌ Server start failed:', error);
     }
-
-    app.listen(PORT, () => {
-        console.log(`🚀 Server running on http://localhost:${PORT}`);
-    });
 };
 
+// Only call startServer if not on Vercel or if explicitly needed
+// Vercel will handle the DB connection if we put it in the middleware or call it globally
+connectDB();
 startServer();
+
+module.exports = app;
